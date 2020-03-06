@@ -1,0 +1,45 @@
+name: "mqtt-topology"
+
+# Topology configuration
+config:
+  # Hint for the number of workers to create
+  topology.workers: 1
+
+components: 
+  # - id: "mqtt-type"
+    # className: "org.apache.storm.mqtt."
+  
+  - id: "mqtt-options"
+    className: "org.apache.storm.mqtt.common.MqttOptions"
+    properties: 
+      - name: "url"
+        value: "tcp://pubsub.besteffort.ndovloket.nl:7664"
+      - name: "topics"
+        value: 
+          - "/"
+
+# It is recommended to use parallelism of 1 for the MQTT spout. 
+# Otherwise multiple instances of the spout will be subscribed to
+# the same topic, resulting in duplicate messages. 
+spouts: 
+  - id: "mqtt-spout"
+    className: "org.apache.storm.mqtt.spout.MqttSpout"
+    constructorArgs:
+      - ref: "mqtt-options"
+    parallelism: 1
+
+bolts:
+  - id: "log"
+    className: "org.apache.storm.flux.wrappers.bolts.LogInfoBolt"
+    parallelism: 1
+  - id: "isolation-forest"
+    className: "org.apache.storm.flux.wrappers.spout.FluxShellSpout"
+    constructorArgs: 
+      - ["python", "test.py"]
+    parallelism: 1
+
+streams: 
+  - from: "mqtt-spout"
+    to: "log"
+    grouping:
+      type: SHUFFLE
